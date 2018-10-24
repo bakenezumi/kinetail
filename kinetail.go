@@ -21,14 +21,28 @@ func main() {
 	shardId := "1"
 	shardIteratorType := "TRIM_HORIZON"
 
+	listShardsInput := kinesis.ListShardsInput{
+		StreamName: &streamName,
+	}
+
+	listShards, err := srv.ListShards(&listShardsInput)
+
+	if err != nil {
+		panic(err)
+	}
+
+	fmt.Println(listShards)
+
 	shardIterator, err := srv.GetShardIterator(&(kinesis.GetShardIteratorInput{
 		StreamName:        &streamName,
 		ShardId:           &shardId,
 		ShardIteratorType: &shardIteratorType,
 	}))
+
 	if err != nil {
 		panic(err)
 	}
+
 	limit := int64(100)
 	params := kinesis.GetRecordsInput{
 		Limit:         &limit,
