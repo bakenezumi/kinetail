@@ -1,36 +1,47 @@
 package main
- 
+
 import (
-  "fmt" 
-  "github.com/aws/aws-sdk-go/aws"
-  "github.com/aws/aws-sdk-go/aws/session"
-  "github.com/aws/aws-sdk-go/service/kinesis" 
+	"fmt"
+
+	"github.com/aws/aws-sdk-go/aws"
+	"github.com/aws/aws-sdk-go/aws/session"
+	"github.com/aws/aws-sdk-go/service/kinesis"
 )
- 
-func main() {   
-  sess, err := session.NewSession(&aws.Config{
-    Region: aws.String("ap-northeast-1")},
-  )
-  if err != nil {
-    panic(err)
-  } 
-  srv := kinesis.New(sess ,aws.NewConfig())
 
-  limit := int64(100)
-  shardIterator := "TRIM_HORIZON"
+func main() {
+	sess, err := session.NewSession(&aws.Config{
+		Region: aws.String("ap-northeast-1")},
+	)
+	if err != nil {
+		panic(err)
+	}
+	srv := kinesis.New(sess, aws.NewConfig())
 
-  params := kinesis.GetRecordsInput {
-    Limit: &limit,
-    ShardIterator: &shardIterator,
-  }
+	streamName := "dev-delivery-dead-letter"
+	shardId := "1"
+	shardIteratorType := "TRIM_HORIZON"
 
-  req, resp := srv.GetRecordsRequest(&params)
+	shardIterator, err := srv.GetShardIterator(&(kinesis.GetShardIteratorInput{
+		StreamName:        &streamName,
+		ShardId:           &shardId,
+		ShardIteratorType: &shardIteratorType,
+	}))
+	if err != nil {
+		panic(err)
+	}
+	limit := int64(100)
+	params := kinesis.GetRecordsInput{
+		Limit:         &limit,
+		ShardIterator: shardIterator.ShardIterator,
+	}
 
-  err = req.Send()
+	req, resp := srv.GetRecordsRequest(&params)
 
-  if err != nil {
-    panic(err)
-  } 
+	err = req.Send()
 
-  fmt.Println(resp)
+	if err != nil {
+		panic(err)
+	}
+
+	fmt.Println(resp)
 }
