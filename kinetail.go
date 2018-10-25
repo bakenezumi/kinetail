@@ -18,44 +18,53 @@ func main() {
 	srv := kinesis.New(sess, aws.NewConfig())
 
 	streamName := "dev-delivery-dead-letter"
-	shardId := "1"
-	shardIteratorType := "TRIM_HORIZON"
 
 	listShardsInput := kinesis.ListShardsInput{
 		StreamName: &streamName,
 	}
 
-	listShards, err := srv.ListShards(&listShardsInput)
+	shards, err := srv.ListShards(&listShardsInput)
 
 	if err != nil {
 		panic(err)
 	}
 
-	fmt.Println(listShards)
+	shardIteratorInputs := make([]*kinesis.GetShardIteratorInput, len(shards.Shards))
 
-	shardIterator, err := srv.GetShardIterator(&(kinesis.GetShardIteratorInput{
-		StreamName:        &streamName,
-		ShardId:           &shardId,
-		ShardIteratorType: &shardIteratorType,
-	}))
+	shardIteratorType := "TRIM_HORIZON"
 
-	if err != nil {
-		panic(err)
+	for i, shard := range shards.Shards {
+		shardIteratorInputs[i] = &kinesis.GetShardIteratorInput{
+			StreamName:        &streamName,
+			ShardId:           shard.ShardId,
+			ShardIteratorType: &shardIteratorType,
+		}
 	}
 
-	limit := int64(100)
-	params := kinesis.GetRecordsInput{
-		Limit:         &limit,
-		ShardIterator: shardIterator.ShardIterator,
+	for _, shardIteratorInput := range shardIteratorInputs {
+		fmt.Println(*shardIteratorInput)
+
+		shardIterator, err := srv.GetShardIterator(shardIteratorInput)
+
+		if err != nil {
+			panic(err)
+		}
+
+		limit := int64(100)
+		params := kinesis.GetRecordsInput{
+			Limit:         &limit,
+			ShardIterator: shardIterator.ShardIterator,
+		}
+
+		req, resp := srv.GetRecordsRequest(&params)
+
+		err = req.Send()
+
+		if err != nil {
+			panic(err)
+		}
+
+		fmt.Println(resp)
 	}
 
-	req, resp := srv.GetRecordsRequest(&params)
-
-	err = req.Send()
-
-	if err != nil {
-		panic(err)
-	}
-
-	fmt.Println(resp)
 }
